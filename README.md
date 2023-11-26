@@ -48,8 +48,11 @@ python run.py "./samples/human_1/source/source.wav" "./samples/human_1/protected
 As shown in .samples, the source and protected wav files for the two sample speakers are located in ./samples/<speaker>/source, and ./samples/<speaker>/protected. Each of their synthesizing results from the voice cloning engine are also included respectively:
 
 *_rtvc.wav: synthezied using Real Time Voice Cloning (also known as SV2TTS)
+
 *_avc.wav: synthezied using Adaptive Voice Conversion 
+
 *_coqui.wav: synthezied using COQUI TTS
+
 *_tortoise.wav: synthezied using Tortoise TTS
 
 # Additional Experiments
