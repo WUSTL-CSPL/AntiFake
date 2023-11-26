@@ -1,0 +1,15 @@
+soundfile==0.10.3.post1
+pygame
+PyYAML==6.0
+scipy==1.7.3
+scikit-learn==1.0.2
+librosa==0.8.0
+matplotlib==3.5.3
+tqdm==4.62.3
+fsspec==2023.1.0
+coqpit==0.0.17
+trainer==0.0.20
+pysbd==0.3.4
+einops==0.6.0
+transformers==4.19.0
+unidecode==1.3.2
