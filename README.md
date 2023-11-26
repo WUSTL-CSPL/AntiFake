@@ -69,6 +69,7 @@ If you find the platform useful, please cite our work with the following referen
   title={AntiFake: Using Adversarial Audio to Prevent Unauthorized Speech Synthesis},
   author={Yu, Zhiyuan and Zhai, Shixuan and Zhang, Ning},
   booktitle={Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications Security},
+  pages={460--474},
   year={2023}
 }
 ```
