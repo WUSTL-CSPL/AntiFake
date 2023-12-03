@@ -1,6 +1,6 @@
 # AntiFake - Adversarial Perturbation to Protect Unauthorized Speech Synthesis
 
-This repository hosts the source code for the paper "AntiFake: Using Adversarial Audio to Prevent Unauthorized Speech Synthesis". The paper has been accepted by [The 30th ACM Conference on Computer and Communications Security (CCS), 2023](https://www.sigsac.org/ccs/CCS2023/).
+This repository hosts the source code for the paper "AntiFake: Using Adversarial Audio to Prevent Unauthorized Speech Synthesis". The [paper](https://zh1yu4nyu.github.io/files/ZhiyuanYu_CCS23_AntiFake.pdf) has been accepted by [The 30th ACM Conference on Computer and Communications Security (CCS), 2023](https://www.sigsac.org/ccs/CCS2023/).
 
 AntiFake protects unauthorized speech synthesis of an arbitrary audio sample from attackers by adding adversarial perturbation. AntiFake selects an optimal target speaker and optimizes the source audio sample towards it. The target selection process is a combination of comparing embeddings from a sample database of speakers, as well as human auditory judgments. 
 
@@ -27,7 +27,7 @@ Due to the file size restrictions, some of the files are moved to the supplement
 
 # Execution Command Explained
 
-In `run.py` under the "options" block, users can change the options of the output directory **OUTPUT_DIR**, as well as which encoders to use in the ensemble in case VRAM is limited. Additionally, the attack is default in target-based mode, user can also turn on/off **THRESHOLD_BASE** to use threshold base instead. For more details, please refer to [our paper](https://zh1yu4nyu.github.io/files/ZhiyuanYu_CCS23_AntiFake.pdf).
+In `run.py` under the "options" block, users can change the options of the output directory **OUTPUT_DIR**, as well as which encoders to use in the ensemble in case VRAM is limited. Additionally, the attack is default in target-based mode, user can also turn on/off **THRESHOLD_BASE** to use threshold base instead. For more details, please refer to our paper.
 
 To convert the audio file to the acceptable format of AntiFake, please use the following:
 ```
