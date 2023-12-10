@@ -6,7 +6,7 @@ AntiFake protects unauthorized speech synthesis of an arbitrary audio sample fro
 
 ## Dependencies and Setup
 AntiFake is implemented and tested on **Python 3.7**. 
-We recommend running AntiFake in a virtual environment (e.g. conda) with at least of 16GB of memory space. 
+We recommend running AntiFake in a virtual environment (e.g. conda) with at least 16GB of memory space. 
 
 The dependencies are included and can be directly installed via conda:
 ```bash
@@ -45,7 +45,7 @@ python run.py "./samples/libri_2/source/source.wav" "./samples/libri_2/protected
 
 python run.py "./samples/human_1/source/source.wav" "./samples/human_1/protected/protected.wav"
 ```
-As shown in .samples, the source and protected wav files for the two sample speakers are located in ./samples/<speaker>/source, and ./samples/<speaker>/protected. The synthesized results from the voice cloning engine are also included:
+As shown in .samples, the source and protected wav files for the two sample speakers are located in ./samples/[speaker]/source, and ./samples/[speaker]/protected. The synthesized results from the voice cloning engine are also included:
 
 *_rtvc.wav: synthesized using Real Time Voice Cloning (also known as SV2TTS)
 
