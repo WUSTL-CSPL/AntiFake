@@ -5,7 +5,7 @@ This repository hosts the source code for the paper "[AntiFake: Using Adversaria
 AntiFake protects unauthorized speech synthesis of an arbitrary audio sample from attackers by adding adversarial perturbation. AntiFake selects an optimal target speaker and optimizes the source audio sample towards it. The target selection process is a combination of comparing embeddings from a sample database of speakers, as well as human auditory judgments. 
 
 ## Dependencies and Setup
-AntiFake is implemented and tested on **Python 3.7** in Ubuntu. 
+AntiFake is implemented and tested with **Python 3.7** on Ubuntu. 
 We recommend running AntiFake in a virtual environment (e.g. conda) with at least 16GB of memory space. 
 
 The dependencies are included and can be directly installed via conda:
