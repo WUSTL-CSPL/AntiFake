@@ -1,6 +1,6 @@
 # AntiFake - Using Adversarial Audio to Prevent Unauthorized Speech Synthesis
 
-This repository hosts the source code for the paper "[AntiFake: Using Adversarial Audio to Prevent Unauthorized Speech Synthesis](https://zh1yu4nyu.github.io/files/ZhiyuanYu_CCS23_AntiFake.pdf)". The paper has been accepted by [the 30th ACM Conference on Computer and Communications Security (CCS), 2023](https://www.sigsac.org/ccs/CCS2023/).
+This repository hosts the source code for the paper "[AntiFake: Using Adversarial Audio to Prevent Unauthorized Speech Synthesis](https://zh1yu4nyu.github.io/files/ZhiyuanYu_CCS23_AntiFake.pdf)". The paper has been accepted by [the 30th ACM Conference on Computer and Communications Security (CCS), 26-30 November 2023](https://www.sigsac.org/ccs/CCS2023/).
 
 AntiFake protects unauthorized speech synthesis of an arbitrary audio sample from attackers by adding adversarial perturbation. AntiFake selects an optimal target speaker and optimizes the source audio sample towards it. The target selection process is a combination of comparing embeddings from a sample database of speakers, as well as human auditory judgments. 
 
