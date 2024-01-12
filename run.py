@@ -545,8 +545,8 @@ if __name__ == "__main__":
         tortoise_threshold_autoregressive = torch.norm(tortoise_target_emb_autoregressive - tortoise_source_emb_autoregressive, p=2) * 100
         tortoise_threshold_diffusion = torch.norm(tortoise_target_emb_diffusion - tortoise_source_emb_diffusion, p=2) * 100
             
-    print('Running attack...')
-    # Run attack
+    print('Running optimization to find the optimal perturbations...')
+    # Run defense
     attack_iteration([wav_tensor_initial], 
                     avc_embed_initial = avc_embed_initial,
                     avc_embed_target = avc_embed_target,
