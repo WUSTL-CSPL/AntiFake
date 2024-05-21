@@ -273,7 +273,7 @@ def attack_iteration(wav_tensor_list,
         
         # aggregate loss 
         quality_term = quality_weight_snr * quality_snr - quality_weight_L2 * quality_l2_norm - quality_weight_frequency * quality_frequency
-        loss = - loss - quality_term
+        loss = -loss + quality_term
 
         print("Quality term: ", quality_term)
         print("Loss: ", loss)
