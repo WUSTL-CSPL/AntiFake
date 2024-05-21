@@ -159,6 +159,7 @@ def rtvc_loss(wav_tensor_updated, rtvc_mel_slices, rtvc_frame_tensor_list, rtvc_
         for i, frame_tensor in enumerate(rtvc_frame_tensor_list):
             delta_L2 = torch.norm(rtvc_embeds_list[i] - rtvc_embed_initial, p=2) * rtvc_scale 
             delta_L2_total += delta_L2
+        delta_L2_total = delta_L2_total / len(rtvc_frame_tensor_list)
         delta_L2_total = elu(rtvc_embed_threshold - delta_L2_total) 
     else:
         for i, frame_tensor in enumerate(rtvc_frame_tensor_list):
