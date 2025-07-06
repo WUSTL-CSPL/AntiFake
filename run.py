@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 
+import argparse
 import numpy as np
 import os
 from pathlib import Path
@@ -41,6 +42,9 @@ TORTOISE_AUTOREGRESSIVE_LOSS = False
 TORTOISE_DIFFUSION_LOSS = False
 
 THRESHOLD_BASE = False
+
+MODE_SELECT_TARGET_SPEAKER = 'select_target_speaker'
+MODE_END_TO_END = 'end_to_end'
 ############################################### Configs ##################################################
 TARGET_SPEAKER_DATABASE = './speakers_database'
 NUM_RANDOM_TARGET_SPEAKER = 24 
@@ -170,7 +174,9 @@ def rtvc_loss(wav_tensor_updated, rtvc_mel_slices, rtvc_frame_tensor_list, rtvc_
 
 def frequency_filter(wav_diff):
     # get spectrogram
-    spectrogram = torchaudio.transforms.Spectrogram().cuda()
+    spectrogram = torchaudio.transforms.Spectrogram()
+    if torch.cuda.is_available():
+        spectrogram = spectrogram.cuda()
     diff_spec = spectrogram(wav_diff)[0]
 
     # load csv
@@ -367,20 +373,27 @@ def avc_embed(source_speaker_path, target_speaker_path):
     inferencer = Inferencer(config=config, original = source_speaker_path, target = target_speaker_path)
     _, _, _, _, avc_initial_emb, avc_target_emb = extract_speaker_embedding_torch(inferencer)
     global AVC_ENCODER_MODEL 
-    AVC_ENCODER_MODEL = SpeakerEncoder(**inferencer.config['SpeakerEncoder']).cuda()
+    AVC_ENCODER_MODEL = SpeakerEncoder(**inferencer.config['SpeakerEncoder'])
+    if torch.cuda.is_available():
+        AVC_ENCODER_MODEL = AVC_ENCODER_MODEL.cuda()
     return avc_initial_emb, avc_target_emb
 
 # Compute embedding with COQUI 
 def coqui_embed(source_speaker_path, target_speaker_path):
     null_stream = io.StringIO() 
     sys.stdout = null_stream
-    tts = TTS(model_name=COQUI_YOURTTS_PATH, progress_bar=True, gpu=True)
+    tts = TTS(model_name=COQUI_YOURTTS_PATH, progress_bar=True, gpu=torch.cuda.is_available())
     speaker_manager = tts.synthesizer.tts_model.speaker_manager
     source_wav = speaker_manager.encoder_ap.load_wav(source_speaker_path, sr=speaker_manager.encoder_ap.sample_rate)
     target_wav = speaker_manager.encoder_ap.load_wav(target_speaker_path, sr=speaker_manager.encoder_ap.sample_rate)
     sys.stdout = sys.__stdout__
-    source_wav = torch.from_numpy(source_wav).cuda().unsqueeze(0)
-    target_wav = torch.from_numpy(target_wav).cuda().unsqueeze(0)
+    source_wav = torch.from_numpy(source_wav)
+    target_wav = torch.from_numpy(target_wav)
+    if torch.cuda.is_available():
+        source_wav = source_wav.cuda()
+        target_wav = target_wav.cuda()
+    source_wav = source_wav.unsqueeze(0)
+    target_wav = target_wav.unsqueeze(0)
     coqui_source_emb = speaker_manager.encoder.compute_embedding(source_wav)
     coqui_target_emb = speaker_manager.encoder.compute_embedding(target_wav)
     global COQUI_ENCODER_MODEL 
@@ -397,7 +410,9 @@ def tortoise_embed(source_speaker_path, target_speaker_path):
     
     if TORTOISE_AUTOREGRESSIVE_LOSS:
         global TORTOISE_ENCODER_MODEL_AUTOREGRESSIVE 
-        TORTOISE_ENCODER_MODEL_AUTOREGRESSIVE = ConditioningEncoder(80, 1024, num_attn_heads=8).cuda()
+        TORTOISE_ENCODER_MODEL_AUTOREGRESSIVE = ConditioningEncoder(80, 1024, num_attn_heads=8)
+        if torch.cuda.is_available():
+            TORTOISE_ENCODER_MODEL_AUTOREGRESSIVE = TORTOISE_ENCODER_MODEL_AUTOREGRESSIVE.cuda()
 
     if TORTOISE_DIFFUSION_LOSS:
         model_channels = 1024
@@ -410,29 +425,13 @@ def tortoise_embed(source_speaker_path, target_speaker_path):
                                                         AttentionBlock(model_channels*2, num_heads, relative_pos_embeddings=True, do_checkpoint=False),
                                                         AttentionBlock(model_channels*2, num_heads, relative_pos_embeddings=True, do_checkpoint=False),
                                                         AttentionBlock(model_channels*2, num_heads, relative_pos_embeddings=True, do_checkpoint=False),
-                                                        AttentionBlock(model_channels*2, num_heads, relative_pos_embeddings=True, do_checkpoint=False)).cuda()
-   
+                                                        AttentionBlock(model_channels*2, num_heads, relative_pos_embeddings=True, do_checkpoint=False))
+        if torch.cuda.is_available():
+            TORTOISE_ENCODER_MODEL_DIFFUSION = TORTOISE_ENCODER_MODEL_DIFFUSION.cuda()
     return tortoise_source_emb_autoregressive, tortoise_source_emb_diffusion, tortoise_target_emb_autoregressive, tortoise_target_emb_diffusion
         
 
-if __name__ == "__main__":
-    
-    source_speaker_path = sys.argv[1]
-    OUTPUT_DIR = sys.argv[2]
-    
-    # Setup RTVC encoders to load source speaker
-    print("Loading source speaker...")
-    ensure_default_models(Path(RTVC_DEFAULT_MODEL_PATH))
-    encoder.load_model(Path(RTVC_DEFAULT_MODEL_PATH + '/default/encoder.pt'))
-    
-    in_fpath = Path(source_speaker_path.replace("\"", "").replace("\'", ""))
-    preprocessed_wav = encoder.preprocess_wav(in_fpath, SAMPLING_RATE)
-    wav, _, mel_slices, RTVC_ENCODER_MODEL, _ = encoder.embed_utterance_preprocess(preprocessed_wav, using_partials=True)
-    
-    wav_tensor_initial = torch.from_numpy(wav).unsqueeze(0).to(DEVICE)
-    wav_tensor_initial.requires_grad = True
-
-    # Randomly select 10 audio from speaker database
+def randomly_select_target_speakers() -> list:
     print("Randomly selecting target speakers...")
     target_speakers_files = []
     for root, dirs, files in os.walk(TARGET_SPEAKER_DATABASE):
@@ -442,8 +441,9 @@ if __name__ == "__main__":
                 target_speakers_files.append(file_path)
     random.shuffle(target_speakers_files)
     target_speakers_selected = target_speakers_files[:NUM_RANDOM_TARGET_SPEAKER]
-    
-    # User listens to source and targets, assign score to each
+    return target_speakers_selected
+
+def generate_user_scores(source_speaker_path, target_speakers_selected) -> list[int]:
     pygame.mixer.init()
     user_scores = []
     for path in target_speakers_selected:
@@ -470,8 +470,9 @@ if __name__ == "__main__":
                 break
             else:
                 print("Invalid input. Please enter a score between 1-5.\n")
+    return user_scores
 
-    # Compute source and target embedding differences, also load each encoder model to the global variables
+def compute_embedding_diffs(RTVC_LOSS, AVC_LOSS, COQUI_LOSS, TORTOISE_AUTOREGRESSIVE_LOSS, TORTOISE_DIFFUSION_LOSS, rtvc_embed, avc_embed, coqui_embed, tortoise_embed, source_speaker_path, mel_slices, wav_tensor_initial, target_speakers_selected):
     print("Computing target speakers embedding differences...")
     rtvc_embedding_diffs = []
     avc_embedding_diffs = []
@@ -495,12 +496,27 @@ if __name__ == "__main__":
                 tortoise_autoregressive_embedding_diffs.append(torch.abs(tortoise_source_emb_autoregressive - tortoise_target_emb_autoregressive).sum().item())
             if TORTOISE_DIFFUSION_LOSS:
                 tortoise_diffusion_embedding_diffs.append(torch.abs(tortoise_source_emb_diffusion - tortoise_target_emb_diffusion).sum().item())
-                
-    # Normalize embedding diffs, summing the normalized embedding diffs
+    return rtvc_embedding_diffs,avc_embedding_diffs,coqui_embedding_diffs,tortoise_autoregressive_embedding_diffs,tortoise_diffusion_embedding_diffs
+
+def normalize_embedding_diffs(NUM_RANDOM_TARGET_SPEAKER, rtvc_embedding_diffs, avc_embedding_diffs, coqui_embedding_diffs, tortoise_autoregressive_embedding_diffs, tortoise_diffusion_embedding_diffs):
     all_lists = [rtvc_embedding_diffs, avc_embedding_diffs, coqui_embedding_diffs, tortoise_autoregressive_embedding_diffs, tortoise_diffusion_embedding_diffs]
     all_lists = [[i / (sum(diffs) / len(diffs)) if diffs else 0 for i in diffs] or [0] * NUM_RANDOM_TARGET_SPEAKER for diffs in all_lists]
     rtvc_embedding_diffs, avc_embedding_diffs, coqui_embedding_diffs, tortoise_autoregressive_embedding_diffs, tortoise_diffusion_embedding_diffs = all_lists
     total_embedding_diffs = [sum(values) for values in zip(*all_lists)]
+    return total_embedding_diffs
+
+def get_targeted_speaker_path(RTVC_LOSS, AVC_LOSS, COQUI_LOSS, TORTOISE_AUTOREGRESSIVE_LOSS, TORTOISE_DIFFUSION_LOSS, NUM_RANDOM_TARGET_SPEAKER, rtvc_embed, avc_embed, coqui_embed, tortoise_embed, randomly_select_target_speakers, generate_user_scores, compute_embedding_diffs, normalize_embedding_diffs, source_speaker_path, mel_slices, wav_tensor_initial):
+    # Randomly select 10 audio from speaker database
+    target_speakers_selected = randomly_select_target_speakers()
+    
+    # User listens to source and targets, assign score to each
+    user_scores = generate_user_scores(source_speaker_path, target_speakers_selected)
+
+    # Compute source and target embedding differences, also load each encoder model to the global variables
+    rtvc_embedding_diffs, avc_embedding_diffs, coqui_embedding_diffs, tortoise_autoregressive_embedding_diffs, tortoise_diffusion_embedding_diffs = compute_embedding_diffs(RTVC_LOSS, AVC_LOSS, COQUI_LOSS, TORTOISE_AUTOREGRESSIVE_LOSS, TORTOISE_DIFFUSION_LOSS, rtvc_embed, avc_embed, coqui_embed, tortoise_embed, source_speaker_path, mel_slices, wav_tensor_initial, target_speakers_selected)
+                
+    # Normalize embedding diffs, summing the normalized embedding diffs
+    total_embedding_diffs = normalize_embedding_diffs(NUM_RANDOM_TARGET_SPEAKER, rtvc_embedding_diffs, avc_embedding_diffs, coqui_embedding_diffs, tortoise_autoregressive_embedding_diffs, tortoise_diffusion_embedding_diffs)
     
     # Select target speaker that has the largest difference from the source with the analytic hierarchy process
     # Normalize the scores from list1 and list2
@@ -510,7 +526,46 @@ if __name__ == "__main__":
     overall_weights = 0.5 * user_scores_weights + 0.5 * ltotal_embedding_diffs_weights
     # Find the item with the highest score
     selected_target_speaker_path = target_speakers_selected[np.argmax(overall_weights)]
+    return selected_target_speaker_path
+
+if __name__ == "__main__":
+
+    argp = argparse.ArgumentParser('AntiFake', usage='run.py source.wav protected.wav')
+    argp.add_argument('source')
+    argp.add_argument('output')
+    argp.add_argument('-m', '--mode', choices=[MODE_SELECT_TARGET_SPEAKER, MODE_END_TO_END], default=MODE_END_TO_END)
+    argp.add_argument('-tsp', '--target_speaker_path')
+    argp.add_argument('-a', '--num_attacks')
+    argp.add_argument('-d', '--device', choices=['cpu', 'cuda'], default='cuda')
+    args = argp.parse_args()
+    source_speaker_path = args.source
+    OUTPUT_DIR = args.output
+    mode = args.mode
+    DEVICE = args.device
+    if args.num_attacks is not None:
+        ATTACK_ITERATIONS = int(args.num_attacks)
     
+    # Setup RTVC encoders to load source speaker
+    print("Loading source speaker...")
+    ensure_default_models(Path(RTVC_DEFAULT_MODEL_PATH))
+    encoder.load_model(Path(RTVC_DEFAULT_MODEL_PATH + '/default/encoder.pt'))
+    
+    in_fpath = Path(source_speaker_path.replace("\"", "").replace("\'", ""))
+    preprocessed_wav = encoder.preprocess_wav(in_fpath, SAMPLING_RATE)
+    wav, _, mel_slices, RTVC_ENCODER_MODEL, _ = encoder.embed_utterance_preprocess(preprocessed_wav, using_partials=True)
+    
+    wav_tensor_initial = torch.from_numpy(wav).unsqueeze(0).to(DEVICE)
+    wav_tensor_initial.requires_grad = True
+
+    if args.target_speaker_path is not None:
+        selected_target_speaker_path = args.target_speaker_path
+    else:
+        selected_target_speaker_path = get_targeted_speaker_path(RTVC_LOSS, AVC_LOSS, COQUI_LOSS, TORTOISE_AUTOREGRESSIVE_LOSS, TORTOISE_DIFFUSION_LOSS, NUM_RANDOM_TARGET_SPEAKER, rtvc_embed, avc_embed, coqui_embed, tortoise_embed, randomly_select_target_speakers, generate_user_scores, compute_embedding_diffs, normalize_embedding_diffs, source_speaker_path, mel_slices, wav_tensor_initial)
+
+    if MODE_SELECT_TARGET_SPEAKER == mode:
+        print(f'Target speaker path = {selected_target_speaker_path}')
+        exit()
+
     print('Target selected, preparing attack...')
     # Get selected target speaker's emebdding, preparing the attack
     avc_embed_initial = None

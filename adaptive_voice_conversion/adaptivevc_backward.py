@@ -85,7 +85,7 @@ def get_spectrograms(fpath):
     mag = np.abs(linear)  # (1+n_fft//2, T)
 
     # mel spectrogram
-    mel_basis = librosa.filters.mel(hp.sr, hp.n_fft, hp.n_mels)  # (n_mels, 1+n_fft//2)
+    mel_basis = librosa.filters.mel(sr=hp.sr, n_fft=hp.n_fft, n_mels=hp.n_mels)
     mel = np.dot(mel_basis, mag)  # (n_mels, t)
 
     # to decibel
@@ -117,7 +117,9 @@ def get_spectrograms_tensor(y):
                                                            norm = "slaney",
                                                            mel_scale = "slaney",
                                                            power = 1
-                                                           ).cuda()
+                                                           )
+    if torch.cuda.is_available():
+         mel_spectrogram = mel_spectrogram.cuda()
 
     # Compute Mel spectrogram
     mel = mel_spectrogram(y)
@@ -192,7 +194,10 @@ class Inferencer(object):
             self.attr = pickle.load(f)
 
     def load_model(self):
-        self.model.load_state_dict(torch.load(f'{self.model_path}'))
+        if torch.cuda.is_available():
+             self.model.load_state_dict(torch.load(f'{self.model_path}'))
+        else:
+            self.model.load_state_dict(torch.load(f'{self.model_path}', map_location='cpu'))
         return
 
     def build_model(self): 
@@ -232,8 +237,11 @@ def inference_one_utterance_torch(inferencer: Inferencer, x, x_cond):
 def inference_from_path_torch(inferencer: Inferencer):
         _, src_mel, _ = get_spectrograms(inferencer.args.source)
         _, tar_mel, _ = get_spectrograms(inferencer.args.target)
-        src_mel = torch.from_numpy(inferencer.normalize(src_mel)).cuda()
-        tar_mel = torch.from_numpy(inferencer.normalize(tar_mel)).cuda()
+        src_mel = torch.from_numpy(inferencer.normalize(src_mel))
+        tar_mel = torch.from_numpy(inferencer.normalize(tar_mel))
+        if torch.cuda.is_available():
+             src_mel = src_mel.cuda()
+             tar_mel = tar_mel.cuda()
         tar_mel.requires_grad_()
         emb, mu = inference_one_utterance_torch(inferencer, src_mel, tar_mel)
         return src_mel, tar_mel, emb, mu
@@ -242,8 +250,11 @@ def extract_speaker_embedding_torch(inferencer: Inferencer):
     
         original_wav, original_mel, _ = get_spectrograms(inferencer.original)
         target_wav, target_mel, _ = get_spectrograms(inferencer.target)
-        original_mel = torch.from_numpy(inferencer.normalize(original_mel)).cuda()
-        target_mel = torch.from_numpy(inferencer.normalize(target_mel)).cuda()
+        original_mel = torch.from_numpy(inferencer.normalize(original_mel))
+        target_mel = torch.from_numpy(inferencer.normalize(target_mel))
+        if torch.cuda.is_available():
+             original_mel = original_mel.cuda()
+             target_mel = target_mel.cuda()
         original_mel.requires_grad_()
         target_mel.requires_grad_()
         
